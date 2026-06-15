@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古文単語練習アプリ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --main: #B5453A; --main-light: #FDECEA; --main-dark: #8B2E25;
+    --navy: #1A2340; --navy-mid: #2E3D60; --gray: #6B7280;
+    --gray-light: #F5F6F8; --white: #FFFFFF; --green: #2D9A6B;
+    --green-light: #E6F7F1; --amber: #D97706; --amber-light: #FEF3C7;
+    --shadow: 0 2px 12px rgba(26,35,64,0.10); --shadow-lg: 0 8px 32px rgba(26,35,64,0.15);
+  }
+  body { font-family: 'Hiragino Mincho ProN','游明朝','Yu Mincho',serif; background:var(--gray-light); color:var(--navy); min-height:100vh; }
+  header { background:var(--main-dark); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+  header h1 { font-size:17px; font-weight:700; color:var(--white); letter-spacing:0.05em; }
+  header h1 span { color:#FFCFCC; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+
+  /* TOP */
+  #top-screen { padding:20px 16px 40px; }
+  .section-label { font-size:11px; font-weight:700; color:var(--gray); letter-spacing:0.1em; margin:20px 0 10px; font-family:'Hiragino Kaku Gothic ProN',sans-serif; }
+  .mode-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .mode-card { background:var(--white); border-radius:14px; padding:16px 14px; border:2px solid #E2E5EE; cursor:pointer; transition:all 0.15s; box-shadow:var(--shadow); }
+  .mode-card:active { transform:scale(0.97); }
+  .mode-card.active-mode { border-color:var(--main); background:var(--main-light); }
+  .mode-card .mode-icon { font-size:26px; margin-bottom:6px; }
+  .mode-card .mode-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+  .mode-card .mode-desc { font-size:10px; color:var(--gray); line-height:1.4; font-family:'Hiragino Kaku Gothic ProN',sans-serif; }
+  .missed-badge { display:inline-block; background:var(--amber); color:white; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-top:4px; font-family:sans-serif; }
+
+  /* RANGE */
+  .range-box { background:var(--white); border-radius:14px; padding:16px; box-shadow:var(--shadow); }
+  .range-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .range-row label { font-size:12px; font-weight:700; color:var(--navy); white-space:nowrap; width:52px; font-family:sans-serif; }
+  .range-input { flex:1; border:2px solid #E2E5EE; border-radius:10px; padding:10px 12px; font-size:18px; font-weight:700; color:var(--navy); text-align:center; outline:none; transition:border 0.15s; -webkit-appearance:none; font-family:sans-serif; }
+  .range-input:focus { border-color:var(--main); }
+  .range-hint { font-size:11px; color:var(--gray); margin-bottom:10px; font-family:sans-serif; }
+  .range-quick { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .quick-btn { background:var(--gray-light); border:1.5px solid #E2E5EE; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:700; color:var(--navy-mid); cursor:pointer; transition:all 0.12s; font-family:sans-serif; }
+  .quick-btn:active { background:var(--main-light); border-color:var(--main); color:var(--main-dark); }
+  .range-preview { border-radius:10px; padding:10px 14px; font-size:12px; font-weight:700; min-height:36px; font-family:sans-serif; }
+  .range-preview.ok { background:var(--main-light); color:var(--main-dark); }
+  .range-preview.error { background:#FEE2E2; color:#DC2626; }
+  .range-preview.empty { background:var(--gray-light); color:var(--gray); }
+
+  .start-btn { width:100%; margin-top:16px; padding:16px; background:var(--main); color:white; font-size:16px; font-weight:700; border:none; border-radius:14px; cursor:pointer; box-shadow:0 4px 16px rgba(181,69,58,0.35); transition:all 0.15s; font-family:sans-serif; letter-spacing:0.05em; }
+  .start-btn:active { transform:scale(0.98); background:var(--main-dark); }
+  .start-btn:disabled { background:#ccc; box-shadow:none; cursor:not-allowed; }
+
+  /* PRACTICE */
+  #practice-screen { padding:16px; min-height:calc(100vh - 56px); display:flex; flex-direction:column; }
+  .practice-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .back-btn { width:36px; height:36px; background:var(--white); border:none; border-radius:50%; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); flex-shrink:0; font-family:sans-serif; }
+  .progress-area { flex:1; }
+  .progress-text { font-size:11px; color:var(--gray); margin-bottom:5px; font-weight:600; font-family:sans-serif; }
+  .progress-bar-wrap { background:#E2E5EE; border-radius:10px; height:6px; overflow:hidden; }
+  .progress-bar { height:100%; background:linear-gradient(90deg,var(--main),#E07060); border-radius:10px; transition:width 0.4s ease; }
+  .card-wrap { flex:1; display:flex; flex-direction:column; justify-content:center; }
+  .vocab-card { background:var(--white); border-radius:20px; padding:28px 22px 24px; box-shadow:var(--shadow-lg); text-align:center; min-height:180px; display:flex; flex-direction:column; justify-content:center; position:relative; overflow:hidden; margin-bottom:14px; }
+  .vocab-card::before { content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,var(--main),#E07060); }
+  .card-badge { position:absolute; top:12px; right:12px; font-size:9px; font-weight:700; padding:3px 8px; border-radius:20px; background:var(--main-light); color:var(--main-dark); font-family:sans-serif; }
+  .card-number { font-size:11px; font-weight:700; color:var(--main); margin-bottom:6px; font-family:sans-serif; letter-spacing:0.05em; }
+  .card-type { font-size:10px; color:var(--gray); margin-bottom:8px; font-family:sans-serif; }
+  .card-question { font-size:30px; font-weight:700; color:var(--navy); line-height:1.3; letter-spacing:0.05em; }
+
+  /* ANSWER */
+  .answer-box { background:var(--gray-light); border-radius:14px; padding:16px 18px; text-align:center; min-height:72px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:2px dashed #CBD5E1; transition:all 0.2s; margin-bottom:12px; }
+  .answer-box.revealed { background:var(--main-light); border:2px solid var(--main); cursor:default; }
+  .tap-hint { font-size:13px; color:#94A3B8; font-weight:600; font-family:sans-serif; }
+  .answer-text { font-size:17px; font-weight:700; color:var(--main-dark); line-height:1.5; display:none; }
+  .answer-box.revealed .tap-hint { display:none; }
+  .answer-box.revealed .answer-text { display:block; }
+  .judge-btns { display:none; grid-template-columns:1fr 1fr; gap:10px; }
+  .judge-btns.visible { display:grid; }
+  .judge-btn { padding:14px; border:none; border-radius:14px; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.15s; font-family:sans-serif; }
+  .judge-btn:active { transform:scale(0.97); }
+  .btn-correct { background:var(--green); color:white; }
+  .btn-wrong { background:#EF4444; color:white; }
+
+  /* RESULT */
+  #result-screen { padding:24px 16px; display:flex; flex-direction:column; align-items:center; }
+  .result-emoji { font-size:64px; margin-bottom:10px; }
+  .result-title { font-size:22px; font-weight:700; margin-bottom:6px; }
+  .result-subtitle { font-size:14px; color:var(--gray); margin-bottom:24px; font-family:sans-serif; }
+  .result-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; width:100%; max-width:340px; margin-bottom:24px; }
+  .stat-card { background:var(--white); border-radius:14px; padding:14px 8px; text-align:center; box-shadow:var(--shadow); }
+  .stat-val { font-size:26px; font-weight:800; font-family:sans-serif; }
+  .stat-val.green { color:var(--green); } .stat-val.red { color:#EF4444; } .stat-val.navy { color:var(--navy); }
+  .stat-label { font-size:10px; color:var(--gray); margin-top:3px; font-weight:600; font-family:sans-serif; }
+  .result-btns { display:flex; flex-direction:column; gap:10px; width:100%; max-width:340px; }
+  .result-btn { padding:15px; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; transition:all 0.15s; font-family:sans-serif; }
+  .result-btn:active { transform:scale(0.98); }
+  .btn-retry-missed { background:var(--amber); color:white; }
+  .btn-back-top { background:var(--white); color:var(--navy); border:2px solid #E2E5EE; }
+  .missed-list-wrap { width:100%; max-width:340px; margin-bottom:16px; }
+  .missed-list-label { font-size:11px; font-weight:700; color:var(--gray); margin-bottom:8px; font-family:sans-serif; }
+  .missed-item { background:var(--amber-light); border-radius:10px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .mi-kogo { font-weight:700; color:var(--navy); font-size:15px; flex-shrink:0; }
+  .mi-yaku { color:var(--gray); font-size:11px; font-family:sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <h1>古文単語<span>練習</span>アプリ</h1>
+</header>
+
+<!-- TOP -->
+<div id="top-screen" class="screen active">
+  <p class="section-label">練習モード</p>
+  <div class="mode-cards">
+    <div class="mode-card" id="mc-kogo-to-yaku" onclick="selectMode('kogo-to-yaku')">
+      <div class="mode-icon">📖</div>
+      <div class="mode-name">古語→現代語訳</div>
+      <div class="mode-desc">古文単語を見て現代語訳を答える</div>
+    </div>
+    <div class="mode-card" id="mc-missed" onclick="selectMode('missed')">
+      <div class="mode-icon">📌</div>
+      <div class="mode-name">間違えた語句</div>
+      <div class="mode-desc">ミスした語句のみ</div>
+      <div id="missed-badge" class="missed-badge" style="display:none"></div>
+    </div>
+  </div>
+
+  <div id="range-section" style="display:none">
+    <p class="section-label" style="margin-top:20px">番号で範囲を指定（No.031〜067）</p>
+    <div class="range-box">
+      <div class="range-row">
+        <label>開始 No.</label>
+        <input class="range-input" type="number" id="input-from" min="31" max="67" placeholder="31" oninput="updatePreview()">
+      </div>
+      <div class="range-row">
+        <label>終了 No.</label>
+        <input class="range-input" type="number" id="input-to" min="31" max="67" placeholder="67" oninput="updatePreview()">
+      </div>
+      <p class="range-hint">※ 収録されている番号のみ出題されます</p>
+      <div class="range-quick">
+        <div class="quick-btn" onclick="setRange(31,40)">031〜040</div>
+        <div class="quick-btn" onclick="setRange(41,50)">041〜050</div>
+        <div class="quick-btn" onclick="setRange(51,60)">051〜060</div>
+        <div class="quick-btn" onclick="setRange(61,67)">061〜067</div>
+        <div class="quick-btn" onclick="setRange(31,67)">全部</div>
+      </div>
+      <div class="range-preview empty" id="range-preview">範囲を入力してください</div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn" style="display:none" onclick="startPractice()">スタート ▶</button>
+</div>
+
+<!-- PRACTICE -->
+<div id="practice-screen" class="screen">
+  <div class="practice-header">
+    <button class="back-btn" onclick="goTop()">←</button>
+    <div class="progress-area">
+      <div class="progress-text" id="progress-text">1 / 10</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:10%"></div></div>
+    </div>
+  </div>
+  <div class="card-wrap">
+    <div class="vocab-card">
+      <div class="card-badge" id="card-badge">古語→現代語</div>
+      <div class="card-number" id="card-number">No.031</div>
+      <div class="card-type" id="card-type">動詞</div>
+      <div class="card-question" id="card-question">ゐる</div>
+    </div>
+    <div class="answer-box" id="answer-box" onclick="revealAnswer()">
+      <div class="tap-hint">タップして答えを見る</div>
+      <div class="answer-text" id="answer-text"></div>
+    </div>
+    <div class="judge-btns" id="judge-btns">
+      <button class="judge-btn btn-wrong" onclick="judgeAnswer(false)">✗ わからなかった</button>
+      <button class="judge-btn btn-correct" onclick="judgeAnswer(true)">○ 合ってた！</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result-screen" class="screen">
+  <div class="result-emoji" id="result-emoji">🎉</div>
+  <div class="result-title" id="result-title">お疲れさまでした！</div>
+  <div class="result-subtitle" id="result-subtitle"></div>
+  <div class="result-stats">
+    <div class="stat-card"><div class="stat-val navy" id="stat-total">0</div><div class="stat-label">出題数</div></div>
+    <div class="stat-card"><div class="stat-val green" id="stat-correct">0</div><div class="stat-label">正解</div></div>
+    <div class="stat-card"><div class="stat-val red" id="stat-wrong">0</div><div class="stat-label">要復習</div></div>
+  </div>
+  <div class="missed-list-wrap" id="missed-list-wrap" style="display:none">
+    <div class="missed-list-label">📌 要復習リスト</div>
+    <div id="missed-list"></div>
+  </div>
+  <div class="result-btns">
+    <button class="result-btn btn-retry-missed" id="btn-retry-missed" onclick="retryMissed()" style="display:none">📌 間違えた語句だけ再挑戦</button>
+    <button class="result-btn btn-back-top" onclick="goTop()">← トップに戻る</button>
+  </div>
+</div>
+
+<script>
+const ALL_WORDS = [
+  {no:31, kogo:'ゐる', type:'動詞', yaku:'①座る ②じっとしている・留まる ③（鳥が）とまる'},
+  {no:32, kogo:'具す', type:'動詞', yaku:'①伴う・連れる・添える ②（下二段）伴わせる・添える'},
+  {no:33, kogo:'経（ふ）', type:'動詞', yaku:'①時間が経過する ②場所を通る・経由する'},
+  {no:34, kogo:'さる', type:'動詞', yaku:'A①避ける（遠ざかる） B②去る・その時になる・立派なほど'},
+  {no:35, kogo:'ものす', type:'動詞', yaku:'いろいろな動詞の代わり（＝代動詞）。多くは日常的な状態や行為を表す'},
+  {no:36, kogo:'ならふ', type:'動詞', yaku:'①慣れる・親しくなる・なじむ ②習慣・習い'},
+  {no:37, kogo:'しのぶ', type:'動詞', yaku:'A①我慢する・こらえる・人目を忍ぶ B②思い出す・恋い慕う（過去や人）'},
+  {no:38, kogo:'わぶ（侘ぶ）', type:'動詞', yaku:'①思うようにならない・困惑する・悲嘆にくれる ②〜しかねる・できない（接尾語）'},
+  {no:39, kogo:'をかし', type:'形容詞', yaku:'①おもしろい・趣がある ②美しい・かわいい ③すばらしい・風流だ'},
+  {no:40, kogo:'よろし', type:'形容詞', yaku:'①普通だ・悪くはない・まあよい ②（よし）よい・すばらしい'},
+  {no:41, kogo:'あはれなり', type:'形容動詞', yaku:'①しみじみとした趣がある ②かわいそうだ・気の毒だ ③感動する'},
+  {no:42, kogo:'つきづきし', type:'形容詞', yaku:'①似つかわしい・ふさわしい ②調和している'},
+  {no:43, kogo:'めでたし', type:'形容詞', yaku:'①すばらしい・立派だ ②美しい・かわいい'},
+  {no:44, kogo:'いさよふ', type:'動詞', yaku:'①ためらう・もじもじする ②漂う・さまよう'},
+  {no:45, kogo:'うるはし', type:'形容詞', yaku:'①きちんとしている・整っている・見事だ ②誠実だ・礼儀正しい'},
+  {no:46, kogo:'やむごとなし', type:'形容詞', yaku:'①高貴だ・並々でない・優れている ②格別だ・重い・そのままにしておけない'},
+  {no:47, kogo:'さきざきし', type:'形容詞', yaku:'①利口だ・頭がよい・気がきく ②先のことを考えて抜け目がない'},
+  {no:48, kogo:'ゆかし', type:'形容詞', yaku:'①見たい・聞きたい・知りたい ②心ひかれる・慕わしい ③奥ゆかしい'},
+  {no:50, kogo:'なつかし', type:'形容詞', yaku:'①親しみ深い・心ひかれる・好ましい ②なつかしく思う'},
+  {no:51, kogo:'こころにくし', type:'形容詞', yaku:'①奥ゆかしい・上品だ・心ひかれる ②憎らしいほどすばらしい'},
+  {no:52, kogo:'うつくし', type:'形容詞', yaku:'①かわいい・いとしい（現代語と同じ） ②美しい・きれい'},
+  {no:53, kogo:'かなし', type:'形容詞', yaku:'①いとしい・かわいい ②悲しい（現代語と同じ）'},
+  {no:54, kogo:'らうたし', type:'形容詞', yaku:'①かわいい・いじらしい ②いたわりたい・世話したいという気持ち'},
+  {no:55, kogo:'めやすし', type:'形容詞', yaku:'①見た目が感じがよい・見苦しくない ②無難だ・目安し＝目が安らか'},
+  {no:56, kogo:'あやし（怪し・賤し）', type:'形容詞', yaku:'A①不思議だ・変だ・妙だ B②身分が低い・みすぼらしい'},
+  {no:57, kogo:'うそこうし', type:'形容詞', yaku:'①冷淡だ・薄情だ・平然としている ②当然だ'},
+  {no:58, kogo:'つれなし', type:'形容詞', yaku:'①冷淡だ・薄情だ・平然としている ②当然だ'},
+  {no:59, kogo:'なめし', type:'形容詞', yaku:'①無礼だ ②なめらかだ・滑らかな様子'},
+  {no:60, kogo:'おどろおどろし', type:'形容詞', yaku:'①大げさだ・気味が悪い・恐ろしい ②いかめしい'},
+  {no:61, kogo:'うし（憂し）', type:'形容詞', yaku:'①つらい・いやだ・情けない ②もの憂い・鬱陶しい'},
+  {no:62, kogo:'むつかし', type:'形容詞', yaku:'①不快だ・煩わしい・恐ろしい ②気味が悪い'},
+  {no:63, kogo:'すさまじ', type:'形容詞', yaku:'①興ざめだ・おもしろくない・しらけている ②荒涼としている・寒々としている'},
+  {no:64, kogo:'びんなし（便無し）', type:'形容詞', yaku:'①不都合だ・いたわしい ②気の毒だ・鎌倉時代以降は「不便」'},
+  {no:65, kogo:'いとほし', type:'形容詞', yaku:'①気の毒だ・かわいそうだ ②かわいい・いじらしい'},
+  {no:66, kogo:'いはけなし', type:'形容詞', yaku:'①幼い・あどけない・子どもっぽい ②子どもらしくかわいやりたる'},
+  {no:67, kogo:'つらし（辛し）', type:'形容詞', yaku:'①つらい・苦痛だ ②薄情だ・冷淡だ（現代語と同じ）'},
+];
+
+let currentMode=null, practiceList=[], currentIdx=0, correctCount=0;
+let sessionMissed=[], missedWordsStorage=JSON.parse(localStorage.getItem('kobun_missed')||'[]');
+
+function selectMode(mode){
+  currentMode=mode;
+  document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('active-mode'));
+  document.getElementById('mc-'+mode).classList.add('active-mode');
+  if(mode==='missed'){
+    document.getElementById('range-section').style.display='none';
+    const has=missedWordsStorage.length>0;
+    document.getElementById('start-btn').style.display='block';
+    document.getElementById('start-btn').disabled=!has;
+    document.getElementById('start-btn').textContent=has?`スタート ▶ (${missedWordsStorage.length}語)`:'間違えた語句がありません';
+  } else {
+    document.getElementById('range-section').style.display='block';
+    document.getElementById('start-btn').style.display='block';
+    updatePreview();
+  }
+}
+
+function setRange(from,to){
+  document.getElementById('input-from').value=from;
+  document.getElementById('input-to').value=to;
+  updatePreview();
+}
+
+function updatePreview(){
+  const from=parseInt(document.getElementById('input-from').value)||0;
+  const to=parseInt(document.getElementById('input-to').value)||0;
+  const prev=document.getElementById('range-preview');
+  const btn=document.getElementById('start-btn');
+  if(!from||!to){prev.className='range-preview empty';prev.textContent='範囲を入力してください';btn.disabled=true;btn.textContent='範囲を指定してください';return;}
+  if(from>to){prev.className='range-preview error';prev.textContent='⚠ 開始番号が終了番号より大きいです';btn.disabled=true;btn.textContent='範囲を確認してください';return;}
+  const matched=ALL_WORDS.filter(w=>w.no>=from&&w.no<=to);
+  if(matched.length===0){prev.className='range-preview error';prev.textContent=`⚠ No.${from}〜${to} に収録語句がありません`;btn.disabled=true;btn.textContent='該当する語句がありません';}
+  else{prev.className='range-preview ok';prev.textContent=`✅ No.${from}〜${to} → ${matched.length}語が対象`;btn.disabled=false;btn.textContent=`スタート ▶ (${matched.length}語)`;}
+}
+
+function startPractice(){
+  if(currentMode==='missed'){practiceList=[...missedWordsStorage];}
+  else{
+    const from=parseInt(document.getElementById('input-from').value);
+    const to=parseInt(document.getElementById('input-to').value);
+    let words=ALL_WORDS.filter(w=>w.no>=from&&w.no<=to);
+    for(let i=words.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[words[i],words[j]]=[words[j],words[i]];}
+    practiceList=words;
+  }
+  currentIdx=0;correctCount=0;sessionMissed=[];
+  showScreen('practice-screen');loadCard();
+}
+
+function loadCard(){
+  const w=practiceList[currentIdx],total=practiceList.length;
+  document.getElementById('progress-text').textContent=`${currentIdx+1} / ${total}`;
+  document.getElementById('progress-bar').style.width=`${((currentIdx+1)/total)*100}%`;
+  document.getElementById('card-number').textContent=`No.${String(w.no).padStart(3,'0')}`;
+  document.getElementById('card-type').textContent=w.type;
+  document.getElementById('card-question').textContent=w.kogo;
+  document.getElementById('answer-text').textContent=w.yaku;
+  const box=document.getElementById('answer-box');
+  box.classList.remove('revealed');
+  document.querySelector('.tap-hint').style.display='block';
+  document.getElementById('answer-text').style.display='none';
+  document.getElementById('judge-btns').classList.remove('visible');
+}
+
+function revealAnswer(){
+  const box=document.getElementById('answer-box');
+  if(box.classList.contains('revealed'))return;
+  box.classList.add('revealed');
+  document.querySelector('.tap-hint').style.display='none';
+  document.getElementById('answer-text').style.display='block';
+  document.getElementById('judge-btns').classList.add('visible');
+}
+
+function judgeAnswer(correct){
+  const w=practiceList[currentIdx];
+  if(correct){correctCount++;missedWordsStorage=missedWordsStorage.filter(x=>x.no!==w.no);}
+  else{sessionMissed.push(w);if(!missedWordsStorage.find(x=>x.no===w.no))missedWordsStorage.push(w);}
+  localStorage.setItem('kobun_missed',JSON.stringify(missedWordsStorage));
+  currentIdx++;
+  if(currentIdx>=practiceList.length)showResult();else loadCard();
+}
+
+function showResult(){
+  const total=practiceList.length,wrong=total-correctCount,pct=Math.round(correctCount/total*100);
+  let emoji='🎉',title='素晴らしい！';
+  if(pct<50){emoji='💪';title='もう少し！';}else if(pct<80){emoji='😊';title='よくできました！';}
+  document.getElementById('result-emoji').textContent=emoji;
+  document.getElementById('result-title').textContent=title;
+  document.getElementById('result-subtitle').textContent=`正解率 ${pct}%`;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-correct').textContent=correctCount;
+  document.getElementById('stat-wrong').textContent=wrong;
+  const mw=document.getElementById('missed-list-wrap'),ml=document.getElementById('missed-list'),rb=document.getElementById('btn-retry-missed');
+  if(sessionMissed.length>0){
+    mw.style.display='block';
+    ml.innerHTML=sessionMissed.map(w=>`<div class="missed-item"><span class="mi-kogo">${w.kogo}</span><span class="mi-yaku">${w.yaku}</span></div>`).join('');
+    rb.style.display='block';rb.textContent=`📌 間違えた${sessionMissed.length}語を再挑戦`;
+  }else{mw.style.display='none';rb.style.display='none';}
+  showScreen('result-screen');updateBadge();
+}
+
+function retryMissed(){
+  practiceList=[...sessionMissed];
+  for(let i=practiceList.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[practiceList[i],practiceList[j]]=[practiceList[j],practiceList[i]];}
+  currentIdx=0;correctCount=0;sessionMissed=[];
+  showScreen('practice-screen');loadCard();
+}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function goTop(){showScreen('top-screen');updateBadge();}
+function updateBadge(){
+  const b=document.getElementById('missed-badge');
+  if(missedWordsStorage.length>0){b.style.display='inline-block';b.textContent=`${missedWordsStorage.length}語`;}
+  else b.style.display='none';
+}
+updateBadge();
+</script>
+</body>
+</html>
