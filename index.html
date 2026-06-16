@@ -60,26 +60,23 @@
   .progress-bar-wrap { background:#E2E5EE; border-radius:10px; height:6px; overflow:hidden; }
   .progress-bar { height:100%; background:linear-gradient(90deg,var(--main),#E07060); border-radius:10px; transition:width 0.4s ease; }
   .card-wrap { flex:1; display:flex; flex-direction:column; justify-content:center; }
-  .vocab-card { background:var(--white); border-radius:20px; padding:28px 22px 24px; box-shadow:var(--shadow-lg); text-align:center; min-height:180px; display:flex; flex-direction:column; justify-content:center; position:relative; overflow:hidden; margin-bottom:14px; }
+  .vocab-card { background:var(--white); border-radius:20px; padding:28px 22px 24px; box-shadow:var(--shadow-lg); text-align:center; min-height:130px; display:flex; flex-direction:column; justify-content:center; position:relative; overflow:hidden; margin-bottom:12px; }
   .vocab-card::before { content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,var(--main),#E07060); }
   .card-badge { position:absolute; top:12px; right:12px; font-size:9px; font-weight:700; padding:3px 8px; border-radius:20px; background:var(--main-light); color:var(--main-dark); font-family:sans-serif; }
-  .card-number { font-size:11px; font-weight:700; color:var(--main); margin-bottom:6px; font-family:sans-serif; letter-spacing:0.05em; }
-  .card-type { font-size:10px; color:var(--gray); margin-bottom:8px; font-family:sans-serif; }
+  .card-number { font-size:11px; font-weight:700; color:var(--main); margin-bottom:4px; font-family:sans-serif; letter-spacing:0.05em; }
+  .card-type { font-size:10px; color:var(--gray); margin-bottom:6px; font-family:sans-serif; }
   .card-question { font-size:30px; font-weight:700; color:var(--navy); line-height:1.3; letter-spacing:0.05em; }
 
-  /* ANSWER */
-  .answer-box { background:var(--gray-light); border-radius:14px; padding:16px 18px; text-align:center; min-height:72px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:2px dashed #CBD5E1; transition:all 0.2s; margin-bottom:12px; }
-  .answer-box.revealed { background:var(--main-light); border:2px solid var(--main); cursor:default; }
-  .tap-hint { font-size:13px; color:#94A3B8; font-weight:600; font-family:sans-serif; }
-  .answer-text { font-size:17px; font-weight:700; color:var(--main-dark); line-height:1.5; display:none; }
-  .answer-box.revealed .tap-hint { display:none; }
-  .answer-box.revealed .answer-text { display:block; }
-  .judge-btns { display:none; grid-template-columns:1fr 1fr; gap:10px; }
-  .judge-btns.visible { display:grid; }
-  .judge-btn { padding:14px; border:none; border-radius:14px; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.15s; font-family:sans-serif; }
-  .judge-btn:active { transform:scale(0.97); }
-  .btn-correct { background:var(--green); color:white; }
-  .btn-wrong { background:#EF4444; color:white; }
+  /* 4択 */
+  .choices { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .choice-btn { padding:13px 15px; border:2px solid #E2E5EE; border-radius:14px; font-size:13px; font-weight:600; cursor:pointer; background:var(--white); color:var(--navy); transition:all 0.15s; text-align:left; line-height:1.6; font-family:'Hiragino Kaku Gothic ProN',sans-serif; }
+  .choice-btn:active:not([disabled]) { transform:scale(0.98); background:var(--gray-light); }
+  .choice-btn.correct { background:var(--green-light); border-color:var(--green); color:var(--green); }
+  .choice-btn.wrong { background:#FEF2F2; border-color:#EF4444; color:#DC2626; }
+  .next-btn { width:100%; padding:14px; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; transition:all 0.15s; display:none; font-family:sans-serif; }
+  .next-btn.show { display:block; }
+  .next-btn.next-correct { background:var(--green); color:white; }
+  .next-btn.next-incorrect { background:#EF4444; color:white; }
 
   /* RESULT */
   #result-screen { padding:24px 16px; display:flex; flex-direction:column; align-items:center; }
@@ -115,7 +112,7 @@
     <div class="mode-card" id="mc-kogo-to-yaku" onclick="selectMode('kogo-to-yaku')">
       <div class="mode-icon">📖</div>
       <div class="mode-name">古語→現代語訳</div>
-      <div class="mode-desc">古文単語を見て現代語訳を答える</div>
+      <div class="mode-desc">古文単語を見て現代語訳を4択で答える</div>
     </div>
     <div class="mode-card" id="mc-missed" onclick="selectMode('missed')">
       <div class="mode-icon">📌</div>
@@ -167,14 +164,8 @@
       <div class="card-type" id="card-type">動詞</div>
       <div class="card-question" id="card-question">ゐる</div>
     </div>
-    <div class="answer-box" id="answer-box" onclick="revealAnswer()">
-      <div class="tap-hint">タップして答えを見る</div>
-      <div class="answer-text" id="answer-text"></div>
-    </div>
-    <div class="judge-btns" id="judge-btns">
-      <button class="judge-btn btn-wrong" onclick="judgeAnswer(false)">✗ わからなかった</button>
-      <button class="judge-btn btn-correct" onclick="judgeAnswer(true)">○ 合ってた！</button>
-    </div>
+    <div class="choices" id="choices"></div>
+    <button class="next-btn" id="next-btn" onclick="nextCard()">次の問題 →</button>
   </div>
 </div>
 
@@ -240,6 +231,7 @@ const ALL_WORDS = [
 
 let currentMode=null, practiceList=[], currentIdx=0, correctCount=0;
 let sessionMissed=[], missedWordsStorage=JSON.parse(localStorage.getItem('kobun_missed')||'[]');
+let correctNo=null;
 
 function selectMode(mode){
   currentMode=mode;
@@ -296,30 +288,48 @@ function loadCard(){
   document.getElementById('card-number').textContent=`No.${String(w.no).padStart(3,'0')}`;
   document.getElementById('card-type').textContent=w.type;
   document.getElementById('card-question').textContent=w.kogo;
-  document.getElementById('answer-text').textContent=w.yaku;
-  const box=document.getElementById('answer-box');
-  box.classList.remove('revealed');
-  document.querySelector('.tap-hint').style.display='block';
-  document.getElementById('answer-text').style.display='none';
-  document.getElementById('judge-btns').classList.remove('visible');
+
+  correctNo=w.no;
+
+  // 正解1つ＋ALL_WORDSから不正解3つをランダムに選ぶ
+  const others=ALL_WORDS.filter(x=>x.no!==w.no);
+  for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]];}
+  const choices=[w,...others.slice(0,3)];
+  for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+
+  document.getElementById('choices').innerHTML=choices.map(c=>
+    `<button class="choice-btn" data-no="${c.no}" onclick="selectChoice(this)">${c.yaku}</button>`
+  ).join('');
+
+  document.getElementById('next-btn').className='next-btn';
 }
 
-function revealAnswer(){
-  const box=document.getElementById('answer-box');
-  if(box.classList.contains('revealed'))return;
-  box.classList.add('revealed');
-  document.querySelector('.tap-hint').style.display='none';
-  document.getElementById('answer-text').style.display='block';
-  document.getElementById('judge-btns').classList.add('visible');
-}
+function selectChoice(btn){
+  const isCorrect=parseInt(btn.dataset.no)===correctNo;
+  document.querySelectorAll('.choice-btn').forEach(b=>{
+    b.disabled=true;
+    if(parseInt(b.dataset.no)===correctNo) b.classList.add('correct');
+  });
+  if(!isCorrect) btn.classList.add('wrong');
 
-function judgeAnswer(correct){
   const w=practiceList[currentIdx];
-  if(correct){correctCount++;missedWordsStorage=missedWordsStorage.filter(x=>x.no!==w.no);}
-  else{sessionMissed.push(w);if(!missedWordsStorage.find(x=>x.no===w.no))missedWordsStorage.push(w);}
+  if(isCorrect){
+    correctCount++;
+    missedWordsStorage=missedWordsStorage.filter(x=>x.no!==w.no);
+  } else {
+    sessionMissed.push(w);
+    if(!missedWordsStorage.find(x=>x.no===w.no)) missedWordsStorage.push(w);
+  }
   localStorage.setItem('kobun_missed',JSON.stringify(missedWordsStorage));
+
+  const nb=document.getElementById('next-btn');
+  nb.className='next-btn show '+(isCorrect?'next-correct':'next-incorrect');
+  nb.textContent=currentIdx+1>=practiceList.length?'結果を見る →':'次の問題 →';
+}
+
+function nextCard(){
   currentIdx++;
-  if(currentIdx>=practiceList.length)showResult();else loadCard();
+  if(currentIdx>=practiceList.length) showResult(); else loadCard();
 }
 
 function showResult(){
