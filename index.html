@@ -103,6 +103,7 @@
 <body>
 <header>
   <h1>古文単語<span>練習</span>アプリ</h1>
+  <button id="bgm-btn" onclick="toggleBGM()" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:2px 6px;line-height:1;opacity:0.8;">🔇</button>
 </header>
 
 <!-- TOP -->
@@ -187,6 +188,7 @@
     <button class="result-btn btn-retry-missed" id="btn-retry-missed" onclick="retryMissed()" style="display:none">📌 間違えた語句だけ再挑戦</button>
     <button class="result-btn btn-back-top" onclick="goTop()">← トップに戻る</button>
   </div>
+  <p id="result-countdown" style="font-size:12px;color:var(--gray);margin-top:14px;font-family:sans-serif;text-align:center;"></p>
 </div>
 
 <script>
@@ -311,6 +313,7 @@ function selectChoice(btn){
     if(parseInt(b.dataset.no)===correctNo) b.classList.add('correct');
   });
   if(!isCorrect) btn.classList.add('wrong');
+  if(isCorrect) sfxCorrect(); else sfxWrong();
 
   const w=practiceList[currentIdx];
   if(isCorrect){
@@ -348,10 +351,13 @@ function showResult(){
     ml.innerHTML=sessionMissed.map(w=>`<div class="missed-item"><span class="mi-kogo">${w.kogo}</span><span class="mi-yaku">${w.yaku}</span></div>`).join('');
     rb.style.display='block';rb.textContent=`📌 間違えた${sessionMissed.length}語を再挑戦`;
   }else{mw.style.display='none';rb.style.display='none';}
+  sfxComplete();
   showScreen('result-screen');updateBadge();
+  startResultCountdown();
 }
 
 function retryMissed(){
+  stopResultTimer();
   practiceList=[...sessionMissed];
   for(let i=practiceList.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[practiceList[i],practiceList[j]]=[practiceList[j],practiceList[i]];}
   currentIdx=0;correctCount=0;sessionMissed=[];
@@ -359,13 +365,62 @@ function retryMissed(){
 }
 
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
-function goTop(){showScreen('top-screen');updateBadge();}
+function goTop(){stopResultTimer();showScreen('top-screen');updateBadge();}
 function updateBadge(){
   const b=document.getElementById('missed-badge');
   if(missedWordsStorage.length>0){b.style.display='inline-block';b.textContent=`${missedWordsStorage.length}語`;}
   else b.style.display='none';
 }
 updateBadge();
+
+// --- BGM・効果音 ---
+let audioCtx=null,bgmPlaying=false,bgmTimer=null,bgmIdx=0;
+const BGM=[523,659,784,880,784,659,523,0,659,784,880,1047,880,784,659,0];
+function getCtx(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function beep(freq,dur,vol,type,delay){
+  vol=vol||0.25;type=type||'sine';delay=delay||0;
+  if(!freq) return;
+  const c=getCtx(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);
+  o.type=type;o.frequency.value=freq;
+  const t=c.currentTime+delay;
+  g.gain.setValueAtTime(vol,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.start(t);o.stop(t+dur);
+}
+function sfxCorrect(){beep(523,0.08);beep(659,0.08,0.25,'sine',0.09);beep(784,0.2,0.25,'sine',0.18);}
+function sfxWrong(){beep(180,0.15,0.2,'square');beep(160,0.2,0.2,'square',0.15);}
+function sfxComplete(){[523,659,784,1047].forEach((f,i)=>beep(f,0.18,0.3,'sine',i*0.13));}
+function bgmTick(){
+  if(!bgmPlaying) return;
+  beep(BGM[bgmIdx%BGM.length],0.35,0.06,'sine');
+  bgmIdx++;
+  bgmTimer=setTimeout(bgmTick,400);
+}
+function toggleBGM(){
+  bgmPlaying=!bgmPlaying;
+  document.getElementById('bgm-btn').textContent=bgmPlaying?'🔊':'🔇';
+  if(bgmPlaying){bgmIdx=0;bgmTick();}
+  else if(bgmTimer){clearTimeout(bgmTimer);bgmTimer=null;}
+}
+
+// --- 全問終了後のカウントダウン ---
+let resultTimer=null;
+function startResultCountdown(){
+  let n=5;
+  const el=document.getElementById('result-countdown');
+  el.textContent=n+'秒後にホームへ戻ります';
+  resultTimer=setInterval(()=>{
+    n--;
+    if(n<=0){clearInterval(resultTimer);resultTimer=null;goTop();}
+    else el.textContent=n+'秒後にホームへ戻ります';
+  },1000);
+}
+function stopResultTimer(){if(resultTimer){clearInterval(resultTimer);resultTimer=null;}}
 </script>
 </body>
 </html>
